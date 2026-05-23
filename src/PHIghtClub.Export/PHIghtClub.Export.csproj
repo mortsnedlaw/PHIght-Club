@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PHIghtClub.Core\PHIghtClub.Core.csproj" />
+    <ProjectReference Include="..\PHIghtClub.Storage\PHIghtClub.Storage.csproj" />
+  </ItemGroup>
+</Project>

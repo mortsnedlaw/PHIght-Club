@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>PHIghtClub</AssemblyName>
+    <RootNamespace>PHIghtClub.App</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PHIghtClub.Core\PHIghtClub.Core.csproj" />
+    <ProjectReference Include="..\PHIghtClub.Dicom\PHIghtClub.Dicom.csproj" />
+    <ProjectReference Include="..\PHIghtClub.DeIdentification\PHIghtClub.DeIdentification.csproj" />
+    <ProjectReference Include="..\PHIghtClub.Export\PHIghtClub.Export.csproj" />
+    <ProjectReference Include="..\PHIghtClub.Ocr\PHIghtClub.Ocr.csproj" />
+    <ProjectReference Include="..\PHIghtClub.Pixel\PHIghtClub.Pixel.csproj" />
+    <ProjectReference Include="..\PHIghtClub.Storage\PHIghtClub.Storage.csproj" />
+  </ItemGroup>
+</Project>

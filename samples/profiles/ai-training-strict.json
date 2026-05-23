@@ -1,0 +1,30 @@
+{
+  "name": "AI Training Strict",
+  "mode": "Pseudonymization",
+  "basedOn": "DICOM PS3.15 Basic Application Level Confidentiality Profile",
+  "uidRemap": true,
+  "removePrivateTagsUnlessWhitelisted": true,
+  "privateTagWhitelist": [],
+  "dateHandling": {
+    "mode": "DeterministicOffset",
+    "algorithm": "HMAC-SHA256",
+    "rangeDays": {
+      "min": -365,
+      "max": 365
+    },
+    "vaultScoped": true
+  },
+  "burnedInPhi": {
+    "ocrMode": "WarnAndRequireApproval",
+    "ocrAcceleration": "GpuCpuAuto",
+    "ocrGuarantee": "AdvisoryOnly"
+  },
+  "nonPixelObjects": {
+    "defaultPolicy": "ManualReviewOrBlock"
+  },
+  "imageSafety": {
+    "mode": "Strict",
+    "preserveTransferSyntax": true,
+    "neverLosslessToLossy": true
+  }
+}

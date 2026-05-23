@@ -1,0 +1,16 @@
+{
+  "name": "Ultrasound Generic Top Banner",
+  "match": {
+    "Modality": "US"
+  },
+  "regions": [
+    {
+      "x": 0,
+      "y": 0,
+      "widthPercent": 100,
+      "heightPercent": 12,
+      "action": "Pixelate"
+    }
+  ],
+  "note": "Template is intentionally generic and requires manual review before use on real data."
+}

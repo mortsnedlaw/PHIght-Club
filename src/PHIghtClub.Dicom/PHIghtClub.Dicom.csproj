@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PHIghtClub.Core\PHIghtClub.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Add concrete fo-dicom implementation in MVP 0.2. -->
+    <!-- <PackageReference Include="fo-dicom" Version="5.*" /> -->
+  </ItemGroup>
+</Project>

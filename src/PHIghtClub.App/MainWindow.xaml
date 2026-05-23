@@ -1,0 +1,231 @@
+<Window x:Class="PHIghtClub.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PHIght Club" Height="760" Width="1180" MinHeight="700" MinWidth="980">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="180"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,14">
+            <StackPanel DockPanel.Dock="Left">
+                <TextBlock Text="PHIght Club" FontSize="34" FontWeight="Bold" />
+                <TextBlock Text="You do not talk about PHI." FontSize="15" Opacity="0.72" />
+            </StackPanel>
+            <Border DockPanel.Dock="Right" BorderBrush="#DDD" BorderThickness="1" CornerRadius="8" Padding="12" VerticalAlignment="Center">
+                <TextBlock Text="v1.0.0 source release · fail closed · OCR advisory" />
+            </Border>
+        </DockPanel>
+
+        <TabControl Grid.Row="1" x:Name="WizardTabs">
+            <TabItem Header="1 Input">
+                <ScrollViewer>
+                    <StackPanel Margin="16">
+                        <GroupBox Header="Input source" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <CheckBox x:Name="UseScpCheckBox" Content="DICOM Storage SCP" IsChecked="True" />
+                                <CheckBox x:Name="UseFolderCheckBox" Content="Import folder" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="DICOM Storage SCP" Padding="12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="260"/>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="260"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="AE Title" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="AeTitleTextBox" Text="PHIGHTCLUB" Grid.Row="0" Grid.Column="1" Margin="0,4"/>
+                                <TextBlock Text="Port" Grid.Row="0" Grid.Column="2" Margin="18,0,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="PortTextBox" Text="11112" Grid.Row="0" Grid.Column="3" Margin="0,4"/>
+
+                                <TextBlock Text="Bind address" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="BindTextBox" Text="0.0.0.0" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                                <TextBlock Text="Staging folder" Grid.Row="1" Grid.Column="2" Margin="18,0,0,0" VerticalAlignment="Center" />
+                                <TextBox x:Name="StagingTextBox" Text="D:\PHIghtClub\Staging" Grid.Row="1" Grid.Column="3" Margin="0,4"/>
+
+                                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Content="Start listener" Width="120" Margin="0,0,8,0" Click="StartListener_Click" />
+                                    <Button Content="Stop listener" Width="120" Click="StopListener_Click" />
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Folder import" Padding="12">
+                            <DockPanel>
+                                <TextBox x:Name="ImportFolderTextBox" Text="" MinWidth="540" DockPanel.Dock="Left" />
+                                <Button Content="Scan folder" Margin="8,0,0,0" Width="110" Click="ScanFolder_Click" />
+                            </DockPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="2 De-ID">
+                <ScrollViewer>
+                    <StackPanel Margin="16">
+                        <GroupBox Header="Mode" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <RadioButton x:Name="MetadataAnonymizationRadio" Content="Metadata anonymization" GroupName="DeIdMode" />
+                                <RadioButton x:Name="PseudonymizationRadio" Content="Pseudonymization" GroupName="DeIdMode" IsChecked="True" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Profile" Padding="12" Margin="0,0,0,12">
+                            <ComboBox x:Name="ProfileCombo" SelectedIndex="0" Width="320" HorizontalAlignment="Left">
+                                <ComboBoxItem Content="AI Training Strict" />
+                                <ComboBoxItem Content="Vendor Handoff" />
+                                <ComboBoxItem Content="Research Basic" />
+                                <ComboBoxItem Content="Internal Test" />
+                            </ComboBox>
+                        </GroupBox>
+
+                        <GroupBox Header="Rules" Padding="12" Margin="0,0,0,12">
+                            <WrapPanel>
+                                <CheckBox Content="Remap PatientID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox Content="Remap PatientName" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox Content="Remap Study UID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox Content="Remap Series UID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox Content="Remap SOP UID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox Content="Remove private tags unless whitelisted" IsChecked="True" Margin="0,0,20,8" />
+                            </WrapPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Date offset" Padding="12">
+                            <StackPanel>
+                                <TextBlock Text="Deterministic HMAC-SHA256 date offset, scoped to mapping vault." />
+                                <TextBlock Text="Same patient + same vault = same offset across jobs." Opacity="0.72" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="3 OCR / Pixel">
+                <ScrollViewer>
+                    <StackPanel Margin="16">
+                        <GroupBox Header="Burned-in PHI detection" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <RadioButton Content="Off" GroupName="OcrMode" />
+                                <RadioButton x:Name="OcrWarnRadio" Content="OCR warn and require approval" GroupName="OcrMode" IsChecked="True" Margin="0,6,0,0" />
+                                <RadioButton Content="Auto-mask using approved templates" GroupName="OcrMode" Margin="0,6,0,0" />
+                                <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                                    <TextBlock Text="OCR is advisory. No OCR findings does not guarantee that the image is free from burned-in PHI." TextWrapping="Wrap" />
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="OCR acceleration" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <RadioButton x:Name="GpuOnlyRadio" Content="GPU only" GroupName="OcrAccel" />
+                                <RadioButton x:Name="GpuCpuRadio" Content="GPU/CPU auto" GroupName="OcrAccel" IsChecked="True" Margin="0,6,0,0" />
+                                <RadioButton x:Name="CpuOnlyRadio" Content="CPU only" GroupName="OcrAccel" Margin="0,6,0,0" />
+                                <TextBlock Text="Backend detection is a release placeholder until OCR backend is implemented." Opacity="0.72" Margin="0,10,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Pixel action" Padding="12">
+                            <StackPanel>
+                                <RadioButton Content="Black mask" GroupName="PixelAction" />
+                                <RadioButton x:Name="PixelateRadio" Content="Pixelate" GroupName="PixelAction" IsChecked="True" Margin="0,6,0,0" />
+                                <RadioButton Content="Blur" GroupName="PixelAction" Margin="0,6,0,0" />
+                                <Button Content="Open preview / draw mask" Width="180" HorizontalAlignment="Left" Margin="0,14,0,0" Click="Preview_Click" />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="4 Image Safety">
+                <StackPanel Margin="16">
+                    <GroupBox Header="Image Safety Mode" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <RadioButton x:Name="StrictSafetyRadio" Content="Strict" GroupName="Safety" IsChecked="True" />
+                            <RadioButton Content="Balanced" GroupName="Safety" Margin="0,6,0,0" />
+                            <RadioButton Content="Custom" GroupName="Safety" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="Strict policy" Padding="12">
+                        <StackPanel>
+                            <CheckBox Content="Preserve original transfer syntax" IsChecked="True" />
+                            <CheckBox Content="Never convert lossless to lossy" IsChecked="True" Margin="0,6,0,0" />
+                            <CheckBox Content="Never modify PixelData unless pixel scrub is enabled" IsChecked="True" Margin="0,6,0,0" />
+                            <CheckBox Content="Block export if safe re-encoding is unavailable" IsChecked="True" Margin="0,6,0,0" />
+                            <CheckBox Content="Validate output DICOM after write" IsChecked="True" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="5 Export">
+                <ScrollViewer>
+                    <StackPanel Margin="16">
+                        <GroupBox Header="Export target" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <RadioButton x:Name="FolderExportRadio" Content="Folder" GroupName="ExportTarget" IsChecked="True" />
+                                <RadioButton Content="ZIP" GroupName="ExportTarget" Margin="0,6,0,0" />
+                                <RadioButton Content="DICOM C-STORE" GroupName="ExportTarget" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Output" Padding="12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Output path" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="OutputPathTextBox" Text="D:\PHIghtClub\Export" Grid.Row="0" Grid.Column="1" Margin="0,4" />
+                                <TextBlock Text="Destination AE" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="DestAeTextBox" Text="AITRAINING" Grid.Row="1" Grid.Column="1" Margin="0,4" />
+                                <TextBlock Text="Host" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="DestHostTextBox" Text="127.0.0.1" Grid.Row="2" Grid.Column="1" Margin="0,4" />
+                                <TextBlock Text="Port" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="DestPortTextBox" Text="104" Grid.Row="3" Grid.Column="1" Margin="0,4" />
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Export controls" Padding="12">
+                            <StackPanel>
+                                <CheckBox Content="C-ECHO before export" IsChecked="True" />
+                                <CheckBox Content="Stop if C-ECHO fails" IsChecked="True" Margin="0,6,0,0" />
+                                <CheckBox Content="Create JSON manifest" IsChecked="True" Margin="0,6,0,0" />
+                                <CheckBox Content="Create CSV summary" IsChecked="True" Margin="0,6,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <GroupBox Grid.Row="2" Header="Warnings / Job log / Manifest preview" Padding="8" Margin="0,12,0,12">
+            <TextBox x:Name="LogTextBox" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AcceptsReturn="True" />
+        </GroupBox>
+
+        <DockPanel Grid.Row="3">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                <Button Content="Back" Width="90" Margin="0,0,8,0" Click="Back_Click" />
+                <Button Content="Dry run" Width="100" Margin="0,0,8,0" Click="DryRun_Click" />
+                <Button Content="Validate" Width="100" Margin="0,0,8,0" Click="Validate_Click" />
+                <Button Content="Export" Width="100" Click="Export_Click" />
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>
