@@ -1,0 +1,67 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31919.166
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Core", "src\PHIghtClub.Core\PHIghtClub.Core.csproj", "{E5A5E5E5-5555-5555-5555-5555555E5E5E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.App", "src\PHIghtClub.App\PHIghtClub.App.csproj", "{E5A5A5A5-5555-5555-5555-5555555EA5A5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Dicom", "src\PHIghtClub.Dicom\PHIghtClub.Dicom.csproj", "{E5A5D5D5-5555-5555-5555-5555555ED5D5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.DeIdentification", "src\PHIghtClub.DeIdentification\PHIghtClub.DeIdentification.csproj", "{E5A5DE5E-5555-5555-5555-5555555EDE5E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Export", "src\PHIghtClub.Export\PHIghtClub.Export.csproj", "{E5A5E5E5-5555-5555-5555-5555555EE5E5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Ocr", "src\PHIghtClub.Ocr\PHIghtClub.Ocr.csproj", "{E5A5O5O5-5555-5555-5555-5555555EO5O5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Pixel", "src\PHIghtClub.Pixel\PHIghtClub.Pixel.csproj", "{E5A5P5P5-5555-5555-5555-5555555EP5P5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Storage", "src\PHIghtClub.Storage\PHIghtClub.Storage.csproj", "{E5A5S5S5-5555-5555-5555-5555555ES5S5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PHIghtClub.Tests", "tests\PHIghtClub.Tests\PHIghtClub.Tests.csproj", "{E5A5T5T5-5555-5555-5555-5555555ET5T5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E5A5E5E5-5555-5555-5555-5555555E5E5E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555E5E5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555E5E5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555E5E5E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5A5A5-5555-5555-5555-5555555EA5A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5A5A5-5555-5555-5555-5555555EA5A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5A5A5-5555-5555-5555-5555555EA5A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5A5A5-5555-5555-5555-5555555EA5A5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5D5D5-5555-5555-5555-5555555ED5D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5D5D5-5555-5555-5555-5555555ED5D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5D5D5-5555-5555-5555-5555555ED5D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5D5D5-5555-5555-5555-5555555ED5D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5DE5E-5555-5555-5555-5555555EDE5E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5DE5E-5555-5555-5555-5555555EDE5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5DE5E-5555-5555-5555-5555555EDE5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5DE5E-5555-5555-5555-5555555EDE5E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555EE5E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555EE5E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555EE5E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5E5E5-5555-5555-5555-5555555EE5E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5O5O5-5555-5555-5555-5555555EO5O5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5O5O5-5555-5555-5555-5555555EO5O5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5O5O5-5555-5555-5555-5555555EO5O5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5O5O5-5555-5555-5555-5555555EO5O5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5P5P5-5555-5555-5555-5555555EP5P5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5P5P5-5555-5555-5555-5555555EP5P5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5P5P5-5555-5555-5555-5555555EP5P5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5P5P5-5555-5555-5555-5555555EP5P5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5S5S5-5555-5555-5555-5555555ES5S5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5S5S5-5555-5555-5555-5555555ES5S5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5S5S5-5555-5555-5555-5555555ES5S5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5S5S5-5555-5555-5555-5555555ES5S5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A5T5T5-5555-5555-5555-5555555ET5T5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A5T5T5-5555-5555-5555-5555555ET5T5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A5T5T5-5555-5555-5555-5555555ET5T5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A5T5T5-5555-5555-5555-5555555ET5T5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

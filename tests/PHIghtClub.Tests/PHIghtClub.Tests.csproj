@@ -1,16 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\PHIghtClub.Core\PHIghtClub.Core.csproj" />
     <ProjectReference Include="..\..\src\PHIghtClub.DeIdentification\PHIghtClub.DeIdentification.csproj" />
     <ProjectReference Include="..\..\src\PHIghtClub.Storage\PHIghtClub.Storage.csproj" />
+    <ProjectReference Include="..\..\src\PHIghtClub.Export\PHIghtClub.Export.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Include="xunit" Version="2.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+    <PackageReference Include="Moq" Version="4.20.70" />
   </ItemGroup>
 </Project>

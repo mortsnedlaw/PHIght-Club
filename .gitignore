@@ -1,0 +1,53 @@
+# .gitignore for PHIght Club (.NET / Visual Studio)
+
+## Build artifacts
+**/bin/
+**/obj/
+*/bin/
+*/obj/
+
+## Rider
+.idea/
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## VS Code
+.vscode/
+
+## Logs
+logs/
+*.log
+
+## Publish output
+publish/
+artifacts/
+
+## NuGet
+*.nupkg
+.nuget/
+packages/
+
+## Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+## OS generated
+.DS_Store
+Thumbs.db
+
+# Ignore build outputs created during local runs
+src/**/bin/
+src/**/obj/
+tests/**/bin/
+tests/**/obj/
+
+# Ignore local configuration
+local.settings.json
+
