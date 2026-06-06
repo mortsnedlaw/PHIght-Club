@@ -46,7 +46,7 @@ public interface IDicomStoreClient
 
 public interface IDicomImportService
 {
-    Task<DicomImportResult> ImportFolderAsync(string folder, CancellationToken cancellationToken);
+    Task<DicomImportResult> ImportFolderAsync(string folder, string stagingFolder, CancellationToken cancellationToken);
 }
 
 public sealed class DicomImportResult

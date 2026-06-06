@@ -21,7 +21,7 @@ public sealed class NoopDicomStoreClient : IDicomStoreClient
 
 public sealed class NoopDicomImportService : IDicomImportService
 {
-    public Task<DicomImportResult> ImportFolderAsync(string folder, CancellationToken cancellationToken)
+    public Task<DicomImportResult> ImportFolderAsync(string folder, string stagingFolder, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
         {

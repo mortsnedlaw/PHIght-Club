@@ -4,9 +4,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PHIghtClub.Core\PHIghtClub.Core.csproj" />
+    <ProjectReference Include="..\PHIghtClub.DeIdentification\PHIghtClub.DeIdentification.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Add concrete fo-dicom implementation in MVP 0.2. -->
-    <!-- <PackageReference Include="fo-dicom" Version="5.*" /> -->
+    <PackageReference Include="fo-dicom" Version="5.*" />
   </ItemGroup>
 </Project>

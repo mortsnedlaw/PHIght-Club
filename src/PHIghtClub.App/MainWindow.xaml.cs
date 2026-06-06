@@ -1,7 +1,10 @@
 using System;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using FellowOakDicom;
 using PHIghtClub.Core;
 using PHIghtClub.Dicom;
 using PHIghtClub.Export;
@@ -13,9 +16,11 @@ public partial class MainWindow : Window
 {
     private readonly ManifestFactory _manifestFactory = new();
     private readonly IManifestIntegrityService _manifestIntegrity = new ManifestIntegrityService();
-    private readonly IDicomImportService _dicomImport = new NoopDicomImportService();
-    private readonly IDicomStorageScpService _dicomStorageScpService = new NoopDicomStorageScpService();
+    private readonly IDicomVerificationClient _dicomVerificationClient = new DicomVerificationClient();
+    private readonly IDicomStoreClient _dicomStoreClient = new DicomStoreClient();
+    private DicomStorageScpService? _dicomStorageScpService;
     private DicomImportResult? _lastImportResult;
+    private readonly byte[] _vaultSecret = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
 
     public MainWindow()
     {
@@ -24,23 +29,57 @@ public partial class MainWindow : Window
         Log("OCR is advisory. No OCR findings does not guarantee that images are free from burned-in PHI.");
     }
 
-    private void StartListener_Click(object sender, RoutedEventArgs e)
+    private async void StartListener_Click(object sender, RoutedEventArgs e)
     {
         Log($"Listener start requested: AE={AeTitleTextBox.Text}, Port={PortTextBox.Text}, Bind={BindTextBox.Text}");
-        Log("v1.0.0 source release placeholder: real Storage SCP implementation is pending fo-dicom integration.");
+
+        var settings = new DicomReceiveSettings(
+            AeTitleTextBox.Text,
+            int.TryParse(PortTextBox.Text, out var port) ? port : 11112,
+            string.IsNullOrWhiteSpace(BindTextBox.Text) ? "127.0.0.1" : BindTextBox.Text,
+            GetStagingFolder());
+
+        try
+        {
+            _dicomStorageScpService = new DicomStorageScpService();
+            await _dicomStorageScpService.StartAsync(settings, CancellationToken.None);
+            Log($"DICOM Storage SCP started: AE={settings.AeTitle}, Port={settings.Port}, Bind={settings.BindAddress}, Staging={settings.StagingFolder}");
+        }
+        catch (Exception ex)
+        {
+            Log($"Failed to start DICOM Storage SCP: {ex.Message}");
+        }
     }
 
-    private void StopListener_Click(object sender, RoutedEventArgs e)
+    private async void StopListener_Click(object sender, RoutedEventArgs e)
     {
-        Log("Listener stop requested.");
+        if (_dicomStorageScpService is null)
+        {
+            Log("DICOM Storage SCP is not running.");
+            return;
+        }
+
+        try
+        {
+            await _dicomStorageScpService.StopAsync(CancellationToken.None);
+            _dicomStorageScpService = null;
+            Log("DICOM Storage SCP stopped.");
+        }
+        catch (Exception ex)
+        {
+            Log($"Failed to stop DICOM Storage SCP: {ex.Message}");
+        }
     }
 
     private async void ScanFolder_Click(object sender, RoutedEventArgs e)
     {
         var folder = ImportFolderTextBox.Text;
-        var result = await _dicomImport.ImportFolderAsync(folder, CancellationToken.None);
+        var stagingFolder = GetStagingFolder();
+        var importService = new DicomImportService();
+        var result = await importService.ImportFolderAsync(folder, stagingFolder, CancellationToken.None);
         _lastImportResult = result;
         Log($"Folder scan: files={result.FilesScanned}, accepted={result.InstancesAccepted}, quarantine={result.InstancesQuarantined}");
+        Log($"Staging: {stagingFolder}");
         foreach (var warning in result.Warnings)
         {
             Log("WARNING: " + warning);
@@ -78,7 +117,7 @@ public partial class MainWindow : Window
         Log(validation.IsBlocked ? "Validation result: BLOCKED" : "Validation result: PASS with current source-release checks");
     }
 
-    private void Export_Click(object sender, RoutedEventArgs e)
+    private async void Export_Click(object sender, RoutedEventArgs e)
     {
         var job = BuildJobFromUi();
         var validation = ValidateJob(job);
@@ -95,12 +134,128 @@ public partial class MainWindow : Window
 
         if (validation.IsBlocked)
         {
-            Log("Export blocked because validation failed or required source-release functionality is not available.");
+            Log("Export blocked because validation failed.");
             return;
         }
 
-        Log("Export requested, but this source release does not perform real DICOM de-identification or export yet.");
-        Log("Use Dry run to generate a signed manifest preview and verify job configuration.");
+        if (job.Export.TargetType == ExportTargetType.DicomCStore && job.Export.RequireCEchoBeforeExport)
+        {
+            var destination = new DicomDestination(job.Export.DestinationAeTitle, job.Export.DestinationHost, job.Export.DestinationPort);
+            Log($"Performing C-ECHO to {destination.Host}:{destination.Port} AE={destination.AeTitle}");
+            var echoSuccess = await _dicomVerificationClient.CEchoAsync(destination, CancellationToken.None);
+            Log(echoSuccess ? "C-ECHO succeeded." : "C-ECHO failed.");
+            if (!echoSuccess)
+            {
+                Log("Export blocked because C-ECHO verification failed.");
+                return;
+            }
+        }
+
+        var acceptedFolder = Path.Combine(GetStagingFolder(), "accepted");
+        if (!Directory.Exists(acceptedFolder))
+        {
+            Log("Export blocked because no accepted DICOM objects were found in staging.");
+            return;
+        }
+
+        var exportedFiles = new List<string>();
+        var outputPath = job.Export.OutputPath;
+        Directory.CreateDirectory(outputPath);
+        var deidService = new DicomMetadataDeIdentificationService();
+        var exportTemp = Path.Combine(Path.GetTempPath(), "PHIghtClubExport", job.JobId);
+        Directory.CreateDirectory(exportTemp);
+
+        try
+        {
+            foreach (var sourceFile in Directory.EnumerateFiles(acceptedFolder, "*.dcm", SearchOption.TopDirectoryOnly))
+            {
+                var dicomFile = DicomFile.Open(sourceFile, FileReadOption.ReadAll);
+                var processed = deidService.Apply(dicomFile, job.DeIdentification, _vaultSecret);
+
+                var targetFileName = Path.GetFileName(sourceFile) ?? Guid.NewGuid().ToString("N") + ".dcm";
+                var targetFile = Path.Combine(exportTemp, targetFileName);
+                processed.Save(targetFile);
+                exportedFiles.Add(targetFile);
+            }
+
+            if (exportedFiles.Count == 0)
+            {
+                Log("Export blocked because no accepted DICOM objects were available for export.");
+                return;
+            }
+
+            if (job.Export.TargetType == ExportTargetType.Zip)
+            {
+                var zipPath = Path.Combine(outputPath, $"{job.JobId}.zip");
+                if (File.Exists(zipPath))
+                {
+                    File.Delete(zipPath);
+                }
+
+                using var archive = System.IO.Compression.ZipFile.Open(zipPath, System.IO.Compression.ZipArchiveMode.Create);
+                foreach (var file in exportedFiles)
+                {
+                    archive.CreateEntryFromFile(file, Path.GetFileName(file) ?? Path.GetFileName(file)!);
+                }
+
+                Log($"Exported {exportedFiles.Count} de-identified DICOM files to ZIP: {zipPath}");
+            }
+            else if (job.Export.TargetType == ExportTargetType.Folder)
+            {
+                foreach (var file in exportedFiles)
+                {
+                    var destination = Path.Combine(outputPath, Path.GetFileName(file) ?? Path.GetFileName(file)!);
+                    File.Copy(file, destination, overwrite: true);
+                }
+
+                Log($"Exported {exportedFiles.Count} de-identified DICOM files to folder: {outputPath}");
+            }
+            else if (job.Export.TargetType == ExportTargetType.DicomCStore)
+            {
+                var destination = new DicomDestination(job.Export.DestinationAeTitle, job.Export.DestinationHost, job.Export.DestinationPort);
+                await _dicomStoreClient.SendAsync(destination, exportedFiles, CancellationToken.None);
+                Log($"Sent {exportedFiles.Count} de-identified DICOM objects via C-STORE to {destination.Host}:{destination.Port}.");
+            }
+
+            if (job.Export.CreateJsonManifest)
+            {
+                var warnings = new List<string>();
+                var manifest = _manifestFactory.CreateDryRunManifest(job, warnings);
+                var devKey = _vaultSecret;
+                manifest.ManifestIntegrity = _manifestIntegrity.Sign(manifest, exportedFiles.Select(path => ManifestFileHash(path)).ToArray(), devKey, "enterprise-dev-key");
+                var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+                var manifestPath = Path.Combine(outputPath, $"{job.JobId}.manifest.json");
+                File.WriteAllText(manifestPath, json);
+                Log($"Manifest written: {manifestPath}");
+                Log($"Manifest verification: {_manifestIntegrity.Verify(manifest, exportedFiles.Select(path => ManifestFileHash(path)).ToArray(), devKey)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Export failed: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(exportTemp))
+                {
+                    Directory.Delete(exportTemp, recursive: true);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup failures.
+            }
+        }
+    }
+
+    private static string ManifestFileHash(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var hash = sha.ComputeHash(stream);
+        return Convert.ToHexString(hash);
     }
 
     private void DryRun_Click(object sender, RoutedEventArgs e)
@@ -134,6 +289,16 @@ public partial class MainWindow : Window
         {
             Log("Could not write manifest: " + ex.Message);
         }
+    }
+
+    private string GetStagingFolder()
+    {
+        var folder = string.IsNullOrWhiteSpace(StagingTextBox.Text)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PHIghtClub", "Staging")
+            : StagingTextBox.Text;
+
+        Directory.CreateDirectory(folder);
+        return folder;
     }
 
     private ExportJob BuildJobFromUi()
