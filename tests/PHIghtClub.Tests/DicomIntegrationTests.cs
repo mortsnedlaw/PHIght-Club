@@ -89,12 +89,12 @@ public class DicomIntegrationTests
             DateOffset = DateOffsetPolicy.Default()
         };
 
-        var result = service.Apply(original, settings, secret);
+        var result = service.ApplyWithTracking(original, settings, secret);
 
-        Assert.Equal(original.FileMetaInfo.TransferSyntax.UID.UID, result.FileMetaInfo.TransferSyntax.UID.UID);
-        Assert.True(original.Dataset.GetValues<byte>(DicomTag.PixelData).SequenceEqual(result.Dataset.GetValues<byte>(DicomTag.PixelData)));
-        Assert.NotEqual(original.Dataset.GetSingleValue<string>(DicomTag.PatientID), result.Dataset.GetSingleValue<string>(DicomTag.PatientID));
-        Assert.NotEqual(original.Dataset.GetSingleValue<string>(DicomTag.PatientName), result.Dataset.GetSingleValue<string>(DicomTag.PatientName));
+        Assert.Equal(original.FileMetaInfo.TransferSyntax.UID.UID, result.ProcessedFile.FileMetaInfo.TransferSyntax.UID.UID);
+        Assert.True(original.Dataset.GetValues<byte>(DicomTag.PixelData).SequenceEqual(result.ProcessedFile.Dataset.GetValues<byte>(DicomTag.PixelData)));
+        Assert.NotEqual(original.Dataset.GetSingleValue<string>(DicomTag.PatientID), result.ProcessedFile.Dataset.GetSingleValue<string>(DicomTag.PatientID));
+        Assert.NotEqual(original.Dataset.GetSingleValue<string>(DicomTag.PatientName), result.ProcessedFile.Dataset.GetSingleValue<string>(DicomTag.PatientName));
     }
 
     [Fact]

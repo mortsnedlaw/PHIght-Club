@@ -221,7 +221,7 @@ public sealed class DicomMetadataDeIdentificationService
         _pseudonymizationService = pseudonymizationService;
     }
 
-    public DicomFile Apply(DicomFile file, DeIdentificationSettings settings, byte[] vaultSecret)
+    public (DicomFile ProcessedFile, DeIdentificationChangeLog ChangeLog) ApplyWithTracking(DicomFile file, DeIdentificationSettings settings, byte[] vaultSecret)
     {
         if (file is null)
         {
@@ -233,6 +233,11 @@ public sealed class DicomMetadataDeIdentificationService
             throw new ArgumentException("Vault secret must be at least 32 bytes.", nameof(vaultSecret));
         }
 
+        var changeLog = new DeIdentificationChangeLog
+        {
+            OriginalTransferSyntax = file.FileMetaInfo?.TransferSyntax?.UID?.UID ?? "Unknown"
+        };
+
         var output = file.Clone();
         var dataset = output.Dataset;
 
@@ -241,21 +246,25 @@ public sealed class DicomMetadataDeIdentificationService
             if (settings.RemapPatientId && dataset.TryGetString(DicomTag.PatientID, out var patientId))
             {
                 dataset.AddOrUpdate(DicomTag.PatientID, _pseudonymizationService.CreatePseudoPatientId(patientId, vaultSecret));
+                changeLog.PatientIdChanged = true;
             }
 
             if (settings.RemapPatientName && dataset.TryGetString(DicomTag.PatientName, out var patientName))
             {
                 dataset.AddOrUpdate(DicomTag.PatientName, _pseudonymizationService.CreatePseudoPatientId(patientName, vaultSecret));
+                changeLog.PatientNameChanged = true;
             }
 
             if (settings.RemapStudyInstanceUid && dataset.TryGetString(DicomTag.StudyInstanceUID, out var studyUid))
             {
                 dataset.AddOrUpdate(DicomTag.StudyInstanceUID, CreateDeterministicUid(studyUid, vaultSecret));
+                changeLog.StudyUidChanged = true;
             }
 
             if (settings.RemapSeriesInstanceUid && dataset.TryGetString(DicomTag.SeriesInstanceUID, out var seriesUid))
             {
                 dataset.AddOrUpdate(DicomTag.SeriesInstanceUID, CreateDeterministicUid(seriesUid, vaultSecret));
+                changeLog.SeriesUidChanged = true;
             }
 
             if (settings.RemapSopInstanceUid && dataset.TryGetString(DicomTag.SOPInstanceUID, out var sopUid))
@@ -266,11 +275,13 @@ public sealed class DicomMetadataDeIdentificationService
                 {
                     output.FileMetaInfo.MediaStorageSOPInstanceUID = new DicomUID(remappedSop, "Pseudo SOP Instance UID", DicomUidType.SOPInstance);
                 }
+                changeLog.SopUidChanged = true;
             }
 
             if (settings.DateOffset.VaultScoped)
             {
-                ApplyDateOffset(dataset, settings.DateOffset, vaultSecret);
+                var offsetDays = ApplyDateOffsetAndTrack(dataset, settings.DateOffset, vaultSecret);
+                changeLog.DateOffsetDays = offsetDays;
             }
         }
         else
@@ -278,21 +289,25 @@ public sealed class DicomMetadataDeIdentificationService
             if (settings.RemapPatientId)
             {
                 dataset.AddOrUpdate(DicomTag.PatientID, "ANONYMIZED");
+                changeLog.PatientIdChanged = true;
             }
 
             if (settings.RemapPatientName)
             {
                 dataset.AddOrUpdate(DicomTag.PatientName, "ANONYMIZED");
+                changeLog.PatientNameChanged = true;
             }
 
             if (settings.RemapStudyInstanceUid && dataset.Contains(DicomTag.StudyInstanceUID))
             {
                 dataset.AddOrUpdate(DicomTag.StudyInstanceUID, CreateDeterministicUid(dataset.GetSingleValue<string>(DicomTag.StudyInstanceUID), vaultSecret));
+                changeLog.StudyUidChanged = true;
             }
 
             if (settings.RemapSeriesInstanceUid && dataset.Contains(DicomTag.SeriesInstanceUID))
             {
                 dataset.AddOrUpdate(DicomTag.SeriesInstanceUID, CreateDeterministicUid(dataset.GetSingleValue<string>(DicomTag.SeriesInstanceUID), vaultSecret));
+                changeLog.SeriesUidChanged = true;
             }
 
             if (settings.RemapSopInstanceUid && dataset.Contains(DicomTag.SOPInstanceUID))
@@ -304,6 +319,7 @@ public sealed class DicomMetadataDeIdentificationService
                 {
                     output.FileMetaInfo.MediaStorageSOPInstanceUID = new DicomUID(remappedSop, "Pseudo SOP Instance UID", DicomUidType.SOPInstance);
                 }
+                changeLog.SopUidChanged = true;
             }
         }
 
@@ -312,7 +328,38 @@ public sealed class DicomMetadataDeIdentificationService
             RemovePrivateTags(dataset);
         }
 
-        return output;
+        changeLog.OutputTransferSyntax = output.FileMetaInfo?.TransferSyntax?.UID?.UID ?? "Unknown";
+
+        return (output, changeLog);
+    }
+
+    private static int ApplyDateOffsetAndTrack(DicomDataset dataset, DateOffsetPolicy policy, byte[] vaultSecret)
+    {
+        if (!dataset.TryGetString(DicomTag.PatientID, out var patientId))
+        {
+            patientId = dataset.GetSingleValueOrDefault(DicomTag.SOPInstanceUID, Guid.NewGuid().ToString());
+        }
+
+        var offsetDays = new DeterministicDateOffsetService().GetOffsetDays(patientId, vaultSecret, policy);
+        var dateTags = new[]
+        {
+            DicomTag.StudyDate,
+            DicomTag.SeriesDate,
+            DicomTag.AcquisitionDate,
+            DicomTag.ContentDate,
+            DicomTag.InstanceCreationDate,
+            DicomTag.PatientBirthDate
+        };
+
+        foreach (var tag in dateTags)
+        {
+            if (dataset.TryGetString(tag, out var text) && DateOnly.TryParseExact(text, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            {
+                dataset.AddOrUpdate(tag, date.AddDays(offsetDays).ToString("yyyyMMdd", CultureInfo.InvariantCulture));
+            }
+        }
+
+        return offsetDays;
     }
 
     private static void ApplyDateOffset(DicomDataset dataset, DateOffsetPolicy policy, byte[] vaultSecret)

@@ -19,6 +19,7 @@ public sealed class ExportManifest
     public IReadOnlyList<string> Warnings { get; init; } = [];
     public string Status { get; init; } = "DryRun";
     public ManifestIntegrity? ManifestIntegrity { get; set; }
+    public string? AuditLogPath { get; set; }
 }
 
 public sealed class ManifestInput

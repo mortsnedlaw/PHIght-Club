@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -158,6 +159,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Show progress window
+        var progressWindow = new RunProgressWindow();
+        progressWindow.Owner = this;
+        var allFiles = Directory.EnumerateFiles(acceptedFolder, "*.dcm", SearchOption.TopDirectoryOnly).ToList();
+        progressWindow.SetJobId(job.JobId);
+        progressWindow.SetTotalCount(allFiles.Count);
+        progressWindow.Show();
+
+        var auditLogger = new RunAuditLogger(job.Export.OutputPath, job.JobId);
         var exportedFiles = new List<string>();
         var outputPath = job.Export.OutputPath;
         Directory.CreateDirectory(outputPath);
@@ -167,15 +177,62 @@ public partial class MainWindow : Window
 
         try
         {
-            foreach (var sourceFile in Directory.EnumerateFiles(acceptedFolder, "*.dcm", SearchOption.TopDirectoryOnly))
+            foreach (var sourceFile in allFiles)
             {
-                var dicomFile = DicomFile.Open(sourceFile, FileReadOption.ReadAll);
-                var processed = deidService.Apply(dicomFile, job.DeIdentification, _vaultSecret);
+                var fileName = Path.GetFileName(sourceFile);
+                progressWindow.UpdateProgress("De-identifying", fileName);
 
-                var targetFileName = Path.GetFileName(sourceFile) ?? Guid.NewGuid().ToString("N") + ".dcm";
-                var targetFile = Path.Combine(exportTemp, targetFileName);
-                processed.Save(targetFile);
-                exportedFiles.Add(targetFile);
+                try
+                {
+                    var dicomFile = DicomFile.Open(sourceFile, FileReadOption.ReadAll);
+                    var (processed, changeLog) = deidService.ApplyWithTracking(dicomFile, job.DeIdentification, _vaultSecret);
+
+                    var targetFileName = Path.GetFileName(sourceFile) ?? Guid.NewGuid().ToString("N") + ".dcm";
+                    var targetFile = Path.Combine(exportTemp, targetFileName);
+                    processed.Save(targetFile);
+                    exportedFiles.Add(targetFile);
+
+                    // Log to audit trail
+                    var auditEntry = new RunAuditLogEntry
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        JobId = job.JobId,
+                        Action = "de-identify",
+                        Status = "OK",
+                        SourcePath = sourceFile,
+                        OutputPath = targetFile,
+                        PatientIdChanged = changeLog.PatientIdChanged,
+                        PatientNameChanged = changeLog.PatientNameChanged,
+                        StudyUidChanged = changeLog.StudyUidChanged,
+                        SeriesUidChanged = changeLog.SeriesUidChanged,
+                        SopUidChanged = changeLog.SopUidChanged,
+                        DateOffsetDays = changeLog.DateOffsetDays,
+                        PixelDataModified = changeLog.PixelDataModified,
+                        TransferSyntaxOriginal = changeLog.OriginalTransferSyntax,
+                        TransferSyntaxOutput = changeLog.OutputTransferSyntax
+                    };
+                    auditLogger.LogEntry(auditEntry);
+                    progressWindow.LogStatus($"De-identified: {fileName}", RunProgressStatus.Success);
+                    progressWindow.IncrementProcessed();
+                    progressWindow.IncrementExported();
+                }
+                catch (Exception ex)
+                {
+                    progressWindow.LogStatus($"Failed to process {fileName}: {ex.Message}", RunProgressStatus.Failed);
+                    progressWindow.IncrementProcessed();
+                    progressWindow.IncrementFailed();
+
+                    var auditEntry = new RunAuditLogEntry
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        JobId = job.JobId,
+                        Action = "de-identify",
+                        Status = "failed",
+                        SourcePath = sourceFile,
+                        ErrorMessage = ex.Message
+                    };
+                    auditLogger.LogEntry(auditEntry);
+                }
             }
 
             if (exportedFiles.Count == 0)
@@ -183,6 +240,8 @@ public partial class MainWindow : Window
                 Log("Export blocked because no accepted DICOM objects were available for export.");
                 return;
             }
+
+            progressWindow.UpdateProgress("Packaging", "Preparing export...");
 
             if (job.Export.TargetType == ExportTargetType.Zip)
             {
@@ -199,6 +258,7 @@ public partial class MainWindow : Window
                 }
 
                 Log($"Exported {exportedFiles.Count} de-identified DICOM files to ZIP: {zipPath}");
+                progressWindow.LogStatus($"Created ZIP with {exportedFiles.Count} files", RunProgressStatus.Success);
             }
             else if (job.Export.TargetType == ExportTargetType.Folder)
             {
@@ -209,30 +269,38 @@ public partial class MainWindow : Window
                 }
 
                 Log($"Exported {exportedFiles.Count} de-identified DICOM files to folder: {outputPath}");
+                progressWindow.LogStatus($"Exported {exportedFiles.Count} files to folder", RunProgressStatus.Success);
             }
             else if (job.Export.TargetType == ExportTargetType.DicomCStore)
             {
                 var destination = new DicomDestination(job.Export.DestinationAeTitle, job.Export.DestinationHost, job.Export.DestinationPort);
                 await _dicomStoreClient.SendAsync(destination, exportedFiles, CancellationToken.None);
                 Log($"Sent {exportedFiles.Count} de-identified DICOM objects via C-STORE to {destination.Host}:{destination.Port}.");
+                progressWindow.LogStatus($"Sent {exportedFiles.Count} objects via C-STORE", RunProgressStatus.Success);
             }
 
             if (job.Export.CreateJsonManifest)
             {
                 var warnings = new List<string>();
                 var manifest = _manifestFactory.CreateDryRunManifest(job, warnings);
+                manifest.AuditLogPath = auditLogger.AuditLogPath;
                 var devKey = _vaultSecret;
                 manifest.ManifestIntegrity = _manifestIntegrity.Sign(manifest, exportedFiles.Select(path => ManifestFileHash(path)).ToArray(), devKey, "enterprise-dev-key");
                 var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
                 var manifestPath = Path.Combine(outputPath, $"{job.JobId}.manifest.json");
                 File.WriteAllText(manifestPath, json);
                 Log($"Manifest written: {manifestPath}");
+                Log($"Audit log: {auditLogger.AuditLogPath}");
+                progressWindow.LogStatus($"Manifest and audit log written", RunProgressStatus.Success);
                 Log($"Manifest verification: {_manifestIntegrity.Verify(manifest, exportedFiles.Select(path => ManifestFileHash(path)).ToArray(), devKey)}");
             }
+
+            progressWindow.LogStatus("Export completed successfully", RunProgressStatus.Success);
         }
         catch (Exception ex)
         {
             Log($"Export failed: {ex.Message}");
+            progressWindow.LogStatus($"Export failed: {ex.Message}", RunProgressStatus.Failed);
         }
         finally
         {
