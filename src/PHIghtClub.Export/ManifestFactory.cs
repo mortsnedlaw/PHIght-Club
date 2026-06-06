@@ -6,6 +6,12 @@ public sealed class ManifestFactory
 {
     public ExportManifest CreateDryRunManifest(ExportJob job, IReadOnlyList<string> warnings)
     {
+        var source = job.Input.UseDicomStorageScp && job.Input.UseFolderImport
+            ? "DICOM Storage SCP + Folder Import"
+            : job.Input.UseDicomStorageScp
+                ? "DICOM Storage SCP"
+                : "Folder Import";
+
         return new ExportManifest
         {
             JobId = job.JobId,
@@ -13,7 +19,7 @@ public sealed class ManifestFactory
             Mode = job.DeIdentification.Mode.ToString(),
             Input = new ManifestInput
             {
-                Source = job.Input.UseDicomStorageScp ? "DICOM Storage SCP" : "Folder Import",
+                Source = source,
                 AeTitle = job.Input.LocalAeTitle,
                 Port = job.Input.Port
             },
@@ -26,9 +32,9 @@ public sealed class ManifestFactory
             {
                 Studies = 0,
                 Series = 0,
-                Instances = 0,
+                Instances = job.ImportSummary.InstancesAccepted,
                 BlockedInstances = 0,
-                QuarantinedInstances = 0
+                QuarantinedInstances = job.ImportSummary.InstancesQuarantined
             },
             DeIdentification = new ManifestDeIdentification
             {

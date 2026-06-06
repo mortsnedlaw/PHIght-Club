@@ -1,0 +1,24 @@
+# Build output
+**/bin/
+**/obj/
+
+# Publish artifacts
+artifacts/
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+*.vs/
+.vscode/
+
+# IDE / editor files
+*.db
+*.log
+
+# Generated files
+*.pdb
+*.exe
+*.dll
+*.deps.json
+*.runtimeconfig.json

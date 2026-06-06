@@ -92,12 +92,12 @@
 
                         <GroupBox Header="Rules" Padding="12" Margin="0,0,0,12">
                             <WrapPanel>
-                                <CheckBox Content="Remap PatientID" IsChecked="True" Margin="0,0,20,8" />
-                                <CheckBox Content="Remap PatientName" IsChecked="True" Margin="0,0,20,8" />
-                                <CheckBox Content="Remap Study UID" IsChecked="True" Margin="0,0,20,8" />
-                                <CheckBox Content="Remap Series UID" IsChecked="True" Margin="0,0,20,8" />
-                                <CheckBox Content="Remap SOP UID" IsChecked="True" Margin="0,0,20,8" />
-                                <CheckBox Content="Remove private tags unless whitelisted" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox x:Name="RemapPatientIdCheckBox" Content="Remap PatientID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox x:Name="RemapPatientNameCheckBox" Content="Remap PatientName" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox x:Name="RemapStudyUidCheckBox" Content="Remap Study UID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox x:Name="RemapSeriesUidCheckBox" Content="Remap Series UID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox x:Name="RemapSopUidCheckBox" Content="Remap SOP UID" IsChecked="True" Margin="0,0,20,8" />
+                                <CheckBox x:Name="RemovePrivateTagsCheckBox" Content="Remove private tags unless whitelisted" IsChecked="True" Margin="0,0,20,8" />
                             </WrapPanel>
                         </GroupBox>
 
@@ -105,6 +105,7 @@
                             <StackPanel>
                                 <TextBlock Text="Deterministic HMAC-SHA256 date offset, scoped to mapping vault." />
                                 <TextBlock Text="Same patient + same vault = same offset across jobs." Opacity="0.72" Margin="0,4,0,0" />
+                                <CheckBox x:Name="DateOffsetVaultScopedCheckBox" Content="Vault-scoped deterministic offset" IsChecked="True" Margin="0,10,0,0" />
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>
@@ -116,9 +117,9 @@
                     <StackPanel Margin="16">
                         <GroupBox Header="Burned-in PHI detection" Padding="12" Margin="0,0,0,12">
                             <StackPanel>
-                                <RadioButton Content="Off" GroupName="OcrMode" />
+                                <RadioButton x:Name="OcrOffRadio" Content="Off" GroupName="OcrMode" />
                                 <RadioButton x:Name="OcrWarnRadio" Content="OCR warn and require approval" GroupName="OcrMode" IsChecked="True" Margin="0,6,0,0" />
-                                <RadioButton Content="Auto-mask using approved templates" GroupName="OcrMode" Margin="0,6,0,0" />
+                                <RadioButton x:Name="OcrAutoMaskRadio" Content="Auto-mask using approved templates" GroupName="OcrMode" Margin="0,6,0,0" />
                                 <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,12,0,0">
                                     <TextBlock Text="OCR is advisory. No OCR findings does not guarantee that the image is free from burned-in PHI." TextWrapping="Wrap" />
                                 </Border>
@@ -136,9 +137,9 @@
 
                         <GroupBox Header="Pixel action" Padding="12">
                             <StackPanel>
-                                <RadioButton Content="Black mask" GroupName="PixelAction" />
+                                <RadioButton x:Name="BlackMaskRadio" Content="Black mask" GroupName="PixelAction" />
                                 <RadioButton x:Name="PixelateRadio" Content="Pixelate" GroupName="PixelAction" IsChecked="True" Margin="0,6,0,0" />
-                                <RadioButton Content="Blur" GroupName="PixelAction" Margin="0,6,0,0" />
+                                <RadioButton x:Name="BlurRadio" Content="Blur" GroupName="PixelAction" Margin="0,6,0,0" />
                                 <Button Content="Open preview / draw mask" Width="180" HorizontalAlignment="Left" Margin="0,14,0,0" Click="Preview_Click" />
                             </StackPanel>
                         </GroupBox>
@@ -151,8 +152,8 @@
                     <GroupBox Header="Image Safety Mode" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
                             <RadioButton x:Name="StrictSafetyRadio" Content="Strict" GroupName="Safety" IsChecked="True" />
-                            <RadioButton Content="Balanced" GroupName="Safety" Margin="0,6,0,0" />
-                            <RadioButton Content="Custom" GroupName="Safety" Margin="0,6,0,0" />
+                            <RadioButton x:Name="BalancedSafetyRadio" Content="Balanced" GroupName="Safety" Margin="0,6,0,0" />
+                            <RadioButton x:Name="CustomSafetyRadio" Content="Custom" GroupName="Safety" Margin="0,6,0,0" />
                         </StackPanel>
                     </GroupBox>
 
@@ -174,8 +175,8 @@
                         <GroupBox Header="Export target" Padding="12" Margin="0,0,0,12">
                             <StackPanel>
                                 <RadioButton x:Name="FolderExportRadio" Content="Folder" GroupName="ExportTarget" IsChecked="True" />
-                                <RadioButton Content="ZIP" GroupName="ExportTarget" Margin="0,6,0,0" />
-                                <RadioButton Content="DICOM C-STORE" GroupName="ExportTarget" Margin="0,6,0,0" />
+                                <RadioButton x:Name="ZipExportRadio" Content="ZIP" GroupName="ExportTarget" Margin="0,6,0,0" />
+                                <RadioButton x:Name="DicomCStoreExportRadio" Content="DICOM C-STORE" GroupName="ExportTarget" Margin="0,6,0,0" />
                             </StackPanel>
                         </GroupBox>
 
@@ -204,10 +205,10 @@
 
                         <GroupBox Header="Export controls" Padding="12">
                             <StackPanel>
-                                <CheckBox Content="C-ECHO before export" IsChecked="True" />
-                                <CheckBox Content="Stop if C-ECHO fails" IsChecked="True" Margin="0,6,0,0" />
-                                <CheckBox Content="Create JSON manifest" IsChecked="True" Margin="0,6,0,0" />
-                                <CheckBox Content="Create CSV summary" IsChecked="True" Margin="0,6,0,0" />
+                                <CheckBox x:Name="RequireCEchoBeforeExportCheckBox" Content="C-ECHO before export" IsChecked="True" />
+                                <CheckBox x:Name="StopIfCEchoFailsCheckBox" Content="Stop if C-ECHO fails" IsChecked="True" Margin="0,6,0,0" />
+                                <CheckBox x:Name="CreateJsonManifestCheckBox" Content="Create JSON manifest" IsChecked="True" Margin="0,6,0,0" />
+                                <CheckBox x:Name="CreateCsvSummaryCheckBox" Content="Create CSV summary" IsChecked="True" Margin="0,6,0,0" />
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>

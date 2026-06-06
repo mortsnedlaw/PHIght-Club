@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -13,6 +14,8 @@ public partial class MainWindow : Window
     private readonly ManifestFactory _manifestFactory = new();
     private readonly IManifestIntegrityService _manifestIntegrity = new ManifestIntegrityService();
     private readonly IDicomImportService _dicomImport = new NoopDicomImportService();
+    private readonly IDicomStorageScpService _dicomStorageScpService = new NoopDicomStorageScpService();
+    private DicomImportResult? _lastImportResult;
 
     public MainWindow()
     {
@@ -36,6 +39,7 @@ public partial class MainWindow : Window
     {
         var folder = ImportFolderTextBox.Text;
         var result = await _dicomImport.ImportFolderAsync(folder, CancellationToken.None);
+        _lastImportResult = result;
         Log($"Folder scan: files={result.FilesScanned}, accepted={result.InstancesAccepted}, quarantine={result.InstancesQuarantined}");
         foreach (var warning in result.Warnings)
         {
@@ -76,8 +80,27 @@ public partial class MainWindow : Window
 
     private void Export_Click(object sender, RoutedEventArgs e)
     {
-        Log("Export requested. Real export is intentionally blocked in this source release until DICOM and pixel pipelines are validated.");
-        Log("Use Dry run to generate a signed manifest preview.");
+        var job = BuildJobFromUi();
+        var validation = ValidateJob(job);
+
+        foreach (var warning in validation.Warnings)
+        {
+            Log("WARNING: " + warning);
+        }
+
+        foreach (var error in validation.Errors)
+        {
+            Log("BLOCKED: " + error);
+        }
+
+        if (validation.IsBlocked)
+        {
+            Log("Export blocked because validation failed or required source-release functionality is not available.");
+            return;
+        }
+
+        Log("Export requested, but this source release does not perform real DICOM de-identification or export yet.");
+        Log("Use Dry run to generate a signed manifest preview and verify job configuration.");
     }
 
     private void DryRun_Click(object sender, RoutedEventArgs e)
@@ -94,7 +117,7 @@ public partial class MainWindow : Window
 
         var manifest = _manifestFactory.CreateDryRunManifest(job, warnings);
         var devKey = System.Text.Encoding.UTF8.GetBytes("PHIghtClub-MVP-Development-Key-Replace-Me-32-bytes-minimum");
-        manifest.ManifestIntegrity = _manifestIntegrity.Sign(manifest, [], devKey, "mvp-dev-key");
+        manifest.ManifestIntegrity = _manifestIntegrity.Sign(manifest, Array.Empty<string>(), devKey, "mvp-dev-key");
 
         var json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
         Log("Dry-run manifest:");
@@ -115,6 +138,26 @@ public partial class MainWindow : Window
 
     private ExportJob BuildJobFromUi()
     {
+        var targetType = ExportTargetType.Folder;
+        if (ZipExportRadio.IsChecked == true)
+        {
+            targetType = ExportTargetType.Zip;
+        }
+        else if (DicomCStoreExportRadio.IsChecked == true)
+        {
+            targetType = ExportTargetType.DicomCStore;
+        }
+
+        var imageSafety = ImageSafetyPolicy.StrictDefault();
+        if (BalancedSafetyRadio.IsChecked == true)
+        {
+            imageSafety = new ImageSafetyPolicy { Mode = ImageSafetyMode.Balanced, PreserveOriginalTransferSyntax = true, NeverConvertLosslessToLossy = true, BlockIfSafeReEncodingUnavailable = true, DoNotTouchPixelDataUnlessScrubEnabled = true, ValidateOutputAfterWrite = true };
+        }
+        else if (CustomSafetyRadio.IsChecked == true)
+        {
+            imageSafety = new ImageSafetyPolicy { Mode = ImageSafetyMode.Custom, PreserveOriginalTransferSyntax = true, NeverConvertLosslessToLossy = true, BlockIfSafeReEncodingUnavailable = true, DoNotTouchPixelDataUnlessScrubEnabled = true, ValidateOutputAfterWrite = true };
+        }
+
         return new ExportJob
         {
             Input = new InputSettings
@@ -130,26 +173,50 @@ public partial class MainWindow : Window
             DeIdentification = new DeIdentificationSettings
             {
                 Mode = PseudonymizationRadio.IsChecked == true ? DeIdentificationMode.Pseudonymization : DeIdentificationMode.MetadataAnonymization,
-                ProfileName = (ProfileCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() ?? "AI Training Strict"
+                ProfileName = (ProfileCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() ?? "AI Training Strict",
+                RemapPatientId = RemapPatientIdCheckBox.IsChecked == true,
+                RemapPatientName = RemapPatientNameCheckBox.IsChecked == true,
+                RemapStudyInstanceUid = RemapStudyUidCheckBox.IsChecked == true,
+                RemapSeriesInstanceUid = RemapSeriesUidCheckBox.IsChecked == true,
+                RemapSopInstanceUid = RemapSopUidCheckBox.IsChecked == true,
+                RemovePrivateTagsUnlessWhitelisted = RemovePrivateTagsCheckBox.IsChecked == true,
+                DateOffset = new DateOffsetPolicy { VaultScoped = DateOffsetVaultScopedCheckBox.IsChecked == true }
             },
             BurnedInPhi = new BurnedInPhiSettings
             {
-                OcrMode = OcrWarnRadio.IsChecked == true ? OcrMode.WarnAndRequireApproval : OcrMode.Off,
+                OcrMode = OcrAutoMaskRadio.IsChecked == true
+                    ? OcrMode.AutoMaskUsingApprovedTemplates
+                    : OcrWarnRadio.IsChecked == true
+                        ? OcrMode.WarnAndRequireApproval
+                        : OcrMode.Off,
                 OcrAcceleration = GpuOnlyRadio.IsChecked == true
                     ? OcrAccelerationMode.GpuOnly
                     : CpuOnlyRadio.IsChecked == true
                         ? OcrAccelerationMode.CpuOnly
                         : OcrAccelerationMode.GpuCpuAuto,
-                PixelAction = PixelateRadio.IsChecked == true ? PixelScrubAction.Pixelate : PixelScrubAction.BlackMask
+                PixelAction = BlackMaskRadio.IsChecked == true
+                    ? PixelScrubAction.BlackMask
+                    : BlurRadio.IsChecked == true
+                        ? PixelScrubAction.Blur
+                        : PixelScrubAction.Pixelate
             },
-            ImageSafety = ImageSafetyPolicy.StrictDefault(),
+            ImageSafety = imageSafety,
+            ImportSummary = new ImportSummary
+            {
+                FilesScanned = _lastImportResult?.FilesScanned ?? 0,
+                InstancesAccepted = _lastImportResult?.InstancesAccepted ?? 0,
+                InstancesQuarantined = _lastImportResult?.InstancesQuarantined ?? 0
+            },
             Export = new ExportSettings
             {
-                TargetType = ExportTargetType.Folder,
+                TargetType = targetType,
                 OutputPath = OutputPathTextBox.Text,
                 DestinationAeTitle = DestAeTextBox.Text,
                 DestinationHost = DestHostTextBox.Text,
-                DestinationPort = int.TryParse(DestPortTextBox.Text, out var destPort) ? destPort : 104
+                DestinationPort = int.TryParse(DestPortTextBox.Text, out var destPort) ? destPort : 104,
+                RequireCEchoBeforeExport = RequireCEchoBeforeExportCheckBox.IsChecked == true,
+                CreateJsonManifest = CreateJsonManifestCheckBox.IsChecked == true,
+                CreateCsvSummary = CreateCsvSummaryCheckBox.IsChecked == true
             }
         };
     }
@@ -163,9 +230,37 @@ public partial class MainWindow : Window
             result.AddError("Select at least one input source.");
         }
 
-        if (job.Input.Port <= 0 || job.Input.Port > 65535)
+        if (job.Input.UseFolderImport && string.IsNullOrWhiteSpace(job.Input.ImportFolder))
         {
-            result.AddError("Invalid SCP port.");
+            result.AddError("Import folder must be specified when folder import is enabled.");
+        }
+
+        if (job.Input.UseDicomStorageScp)
+        {
+            if (string.IsNullOrWhiteSpace(job.Input.LocalAeTitle))
+            {
+                result.AddError("Local AE title is required for DICOM SCP.");
+            }
+
+            if (job.Input.Port <= 0 || job.Input.Port > 65535)
+            {
+                result.AddError("Invalid SCP port.");
+            }
+        }
+
+        if (job.Export.TargetType == ExportTargetType.DicomCStore && string.IsNullOrWhiteSpace(job.Export.DestinationHost))
+        {
+            result.AddError("Destination host is required for DICOM C-STORE export.");
+        }
+
+        if (job.Export.TargetType == ExportTargetType.Zip && string.IsNullOrWhiteSpace(job.Export.OutputPath))
+        {
+            result.AddError("Output path is required for ZIP export.");
+        }
+
+        if (string.IsNullOrWhiteSpace(job.Export.OutputPath))
+        {
+            result.AddError("Output path is required.");
         }
 
         if (job.BurnedInPhi.OcrMode != OcrMode.Off)
@@ -176,6 +271,11 @@ public partial class MainWindow : Window
         if (job.DeIdentification.Mode == DeIdentificationMode.Pseudonymization && !job.DeIdentification.DateOffset.VaultScoped)
         {
             result.AddError("Pseudonymization with deterministic date offset requires vault-scoped offset.");
+        }
+
+        if (!job.DeIdentification.RemapPatientId || !job.DeIdentification.RemapPatientName)
+        {
+            result.AddWarning("Disabling patient identifier remapping may leave sensitive identifiers in metadata.");
         }
 
         return result;

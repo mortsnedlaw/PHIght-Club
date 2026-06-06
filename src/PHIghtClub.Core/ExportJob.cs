@@ -9,9 +9,17 @@ public sealed class ExportJob
     public DeIdentificationSettings DeIdentification { get; init; } = new();
     public BurnedInPhiSettings BurnedInPhi { get; init; } = new();
     public ImageSafetyPolicy ImageSafety { get; init; } = ImageSafetyPolicy.StrictDefault();
+    public ImportSummary ImportSummary { get; init; } = new();
     public ExportSettings Export { get; init; } = new();
 
     public JobStatus Status { get; set; } = JobStatus.Draft;
+}
+
+public sealed class ImportSummary
+{
+    public int FilesScanned { get; init; }
+    public int InstancesAccepted { get; init; }
+    public int InstancesQuarantined { get; init; }
 }
 
 public static class JobIdFactory

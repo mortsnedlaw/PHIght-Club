@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
     <AssemblyName>PHIghtClub</AssemblyName>
     <RootNamespace>PHIghtClub.App</RootNamespace>
   </PropertyGroup>
