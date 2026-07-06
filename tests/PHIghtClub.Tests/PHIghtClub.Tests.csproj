@@ -9,6 +9,8 @@
     <ProjectReference Include="..\..\src\PHIghtClub.Storage\PHIghtClub.Storage.csproj" />
     <ProjectReference Include="..\..\src\PHIghtClub.Export\PHIghtClub.Export.csproj" />
     <ProjectReference Include="..\..\src\PHIghtClub.Dicom\PHIghtClub.Dicom.csproj" />
+    <ProjectReference Include="..\..\src\PHIghtClub.Pixel\PHIghtClub.Pixel.csproj" />
+    <ProjectReference Include="..\..\src\PHIghtClub.Ocr\PHIghtClub.Ocr.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />

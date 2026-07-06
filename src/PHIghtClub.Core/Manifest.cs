@@ -16,10 +16,27 @@ public sealed class ExportManifest
     public ManifestDeIdentification DeIdentification { get; init; } = new();
     public ManifestOcr Ocr { get; init; } = new();
     public ManifestImageSafety ImageSafety { get; init; } = new();
+    public IReadOnlyList<ManifestObjectEntry> Objects { get; init; } = [];
     public IReadOnlyList<string> Warnings { get; init; } = [];
     public string Status { get; init; } = "DryRun";
     public ManifestIntegrity? ManifestIntegrity { get; set; }
     public string? AuditLogPath { get; set; }
+}
+
+public sealed class ManifestObjectEntry
+{
+    public string FileName { get; init; } = string.Empty;
+    public string SopClassUid { get; init; } = string.Empty;
+    public string OriginalStudyInstanceUid { get; init; } = string.Empty;
+    public string OriginalSeriesInstanceUid { get; init; } = string.Empty;
+    public string OriginalSopInstanceUid { get; init; } = string.Empty;
+    public string RemappedStudyInstanceUid { get; init; } = string.Empty;
+    public string RemappedSeriesInstanceUid { get; init; } = string.Empty;
+    public string RemappedSopInstanceUid { get; init; } = string.Empty;
+    public string TransferSyntaxOriginal { get; init; } = string.Empty;
+    public string TransferSyntaxOutput { get; init; } = string.Empty;
+    public bool PixelDataModified { get; init; }
+    public string Sha256Hash { get; init; } = string.Empty;
 }
 
 public sealed class ManifestInput

@@ -5,4 +5,8 @@
   <ItemGroup>
     <ProjectReference Include="..\PHIghtClub.Core\PHIghtClub.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="5.2.7" />
+    <PackageReference Include="fo-dicom" Version="5.1.2" />
+  </ItemGroup>
 </Project>

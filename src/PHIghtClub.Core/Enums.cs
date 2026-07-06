@@ -25,6 +25,7 @@ public enum OcrBackend
     Disabled,
     DirectML,
     Cuda,
+    OpenCL,
     Cpu
 }
 
@@ -44,6 +45,7 @@ public enum ExportTargetType
 
 public enum PixelScrubAction
 {
+    None,
     BlackMask,
     Pixelate,
     Blur
