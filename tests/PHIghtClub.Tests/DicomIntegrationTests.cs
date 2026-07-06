@@ -104,7 +104,7 @@ public class DicomIntegrationTests
         job.DeIdentification.ProfileName = "AI Training Strict";
         job.DeIdentification.DateOffset = DateOffsetPolicy.Default();
 
-        var manifest = new ManifestFactory().CreateDryRunManifest(job, new[] { "Validation test." });
+        var manifest = new ManifestFactory().CreateDryRunManifest(job, new[] { "Validation test." }, Array.Empty<ManifestObjectEntry>());
         var integrityService = new ManifestIntegrityService();
         var secret = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
         var objectHashes = new[] { "ABC123", "DEF456" };

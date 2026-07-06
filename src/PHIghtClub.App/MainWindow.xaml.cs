@@ -9,6 +9,8 @@ using FellowOakDicom;
 using PHIghtClub.Core;
 using PHIghtClub.Dicom;
 using PHIghtClub.Export;
+using PHIghtClub.Pixel;
+using PHIghtClub.Ocr;
 using PHIghtClub.Storage;
 
 namespace PHIghtClub.App;
@@ -87,9 +89,79 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Preview_Click(object sender, RoutedEventArgs e)
+    private async void Preview_Click(object sender, RoutedEventArgs e)
     {
-        Log("Preview/mask requested. v1.0.0 source release placeholder: pixel preview is pending pixel pipeline integration.");
+        var job = BuildJobFromUi();
+        var acceptedFolder = Path.Combine(GetStagingFolder(), "accepted");
+        if (!Directory.Exists(acceptedFolder))
+        {
+            Log("Preview blocked because no accepted DICOM objects were found in staging.");
+            return;
+        }
+
+        var sourceFile = Directory.EnumerateFiles(acceptedFolder, "*.dcm", SearchOption.TopDirectoryOnly).FirstOrDefault();
+        if (sourceFile is null)
+        {
+            Log("Preview blocked because no accepted DICOM objects were available.");
+            return;
+        }
+
+        var previewFolder = Path.Combine(Path.GetTempPath(), "PHIghtClubPreview");
+        Directory.CreateDirectory(previewFolder);
+        var previewFile = Path.Combine(previewFolder, Path.GetFileName(sourceFile) ?? Guid.NewGuid().ToString("N") + ".dcm");
+        File.Copy(sourceFile, previewFile, true);
+
+        DicomFile dicomFile;
+        try
+        {
+            dicomFile = DicomFile.Open(sourceFile, FileReadOption.ReadAll);
+        }
+        catch (Exception ex)
+        {
+            Log($"Preview blocked because the DICOM file could not be opened: {ex.Message}");
+            return;
+        }
+
+        var regions = BuildPreviewMaskRegions(dicomFile);
+        if (regions.Count == 0)
+        {
+            Log("Preview blocked because no preview mask region could be generated.");
+            return;
+        }
+
+        var scrubber = new PixelPipelineImpl();
+        var scrubResult = await scrubber.ApplyAsync(previewFile, regions, job.BurnedInPhi.PixelAction, job.ImageSafety, CancellationToken.None);
+
+        var ocrEngine = new ProductionOcrEngine();
+        var ocrStatus = await ocrEngine.InitializeAsync(job.BurnedInPhi.OcrAcceleration, CancellationToken.None);
+        var ocrRegions = job.BurnedInPhi.OcrMode == OcrMode.Off || !ocrStatus.Available
+            ? Array.Empty<OcrRegion>()
+            : await ocrEngine.DetectTextAsync(null!, CancellationToken.None);
+
+        Log($"Preview file: {previewFile}");
+        Log($"Pixel scrub preview: {scrubResult.Message} Modified={scrubResult.PixelDataModified} Blocked={scrubResult.Blocked} Lossy={scrubResult.LossyCompressionIntroduced}");
+        Log($"OCR preview: backend={ocrStatus.Backend}, available={ocrStatus.Available}, regions detected={ocrRegions.Count}");
+    }
+
+    private static IReadOnlyList<MaskRegion> BuildPreviewMaskRegions(DicomFile dicomFile)
+    {
+        try
+        {
+            var rows = dicomFile.Dataset.GetSingleValue<int>(DicomTag.Rows);
+            var cols = dicomFile.Dataset.GetSingleValue<int>(DicomTag.Columns);
+            if (rows <= 0 || cols <= 0)
+                return Array.Empty<MaskRegion>();
+
+            var width = Math.Max(1, cols / 4);
+            var height = Math.Max(1, rows / 4);
+            var x = Math.Max(0, (cols - width) / 2);
+            var y = Math.Max(0, (rows - height) / 2);
+            return new[] { new MaskRegion(x, y, width, height) };
+        }
+        catch
+        {
+            return Array.Empty<MaskRegion>();
+        }
     }
 
     private void Back_Click(object sender, RoutedEventArgs e)
@@ -169,9 +241,10 @@ public partial class MainWindow : Window
 
         var auditLogger = new RunAuditLogger(job.Export.OutputPath, job.JobId);
         var exportedFiles = new List<string>();
+        var manifestObjects = new List<ManifestObjectEntry>();
         var outputPath = job.Export.OutputPath;
         Directory.CreateDirectory(outputPath);
-        var deidService = new DicomMetadataDeIdentificationService();
+        var deidService = new DicomDeIdentificationEngine();
         var exportTemp = Path.Combine(Path.GetTempPath(), "PHIghtClubExport", job.JobId);
         Directory.CreateDirectory(exportTemp);
 
@@ -191,6 +264,22 @@ public partial class MainWindow : Window
                     var targetFile = Path.Combine(exportTemp, targetFileName);
                     processed.Save(targetFile);
                     exportedFiles.Add(targetFile);
+
+                    manifestObjects.Add(new ManifestObjectEntry
+                    {
+                        FileName = targetFileName,
+                        SopClassUid = processed.Dataset.GetSingleValue<string>(DicomTag.SOPClassUID),
+                        OriginalStudyInstanceUid = changeLog.OriginalStudyInstanceUid,
+                        OriginalSeriesInstanceUid = changeLog.OriginalSeriesInstanceUid,
+                        OriginalSopInstanceUid = changeLog.OriginalSopInstanceUid,
+                        RemappedStudyInstanceUid = changeLog.RemappedStudyInstanceUid,
+                        RemappedSeriesInstanceUid = changeLog.RemappedSeriesInstanceUid,
+                        RemappedSopInstanceUid = changeLog.RemappedSopInstanceUid,
+                        TransferSyntaxOriginal = changeLog.OriginalTransferSyntax,
+                        TransferSyntaxOutput = changeLog.OutputTransferSyntax,
+                        PixelDataModified = changeLog.PixelDataModified,
+                        Sha256Hash = ManifestFileHash(targetFile)
+                    });
 
                     // Log to audit trail
                     var auditEntry = new RunAuditLogEntry
@@ -282,7 +371,7 @@ public partial class MainWindow : Window
             if (job.Export.CreateJsonManifest)
             {
                 var warnings = new List<string>();
-                var manifest = _manifestFactory.CreateDryRunManifest(job, warnings);
+                var manifest = _manifestFactory.CreateDryRunManifest(job, warnings, manifestObjects);
                 manifest.AuditLogPath = auditLogger.AuditLogPath;
                 var devKey = _vaultSecret;
                 manifest.ManifestIntegrity = _manifestIntegrity.Sign(manifest, exportedFiles.Select(path => ManifestFileHash(path)).ToArray(), devKey, "enterprise-dev-key");
@@ -338,7 +427,7 @@ public partial class MainWindow : Window
             "DICOM PS3.15 Annex E mapping is documented as a v1.0 release requirement and must be implemented before real patient-data use."
         };
 
-        var manifest = _manifestFactory.CreateDryRunManifest(job, warnings);
+        var manifest = _manifestFactory.CreateDryRunManifest(job, warnings, Array.Empty<ManifestObjectEntry>());
         var devKey = System.Text.Encoding.UTF8.GetBytes("PHIghtClub-MVP-Development-Key-Replace-Me-32-bytes-minimum");
         manifest.ManifestIntegrity = _manifestIntegrity.Sign(manifest, Array.Empty<string>(), devKey, "mvp-dev-key");
 

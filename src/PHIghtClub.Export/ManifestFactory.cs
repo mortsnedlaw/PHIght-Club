@@ -4,7 +4,7 @@ namespace PHIghtClub.Export;
 
 public sealed class ManifestFactory
 {
-    public ExportManifest CreateDryRunManifest(ExportJob job, IReadOnlyList<string> warnings)
+    public ExportManifest CreateDryRunManifest(ExportJob job, IReadOnlyList<string> warnings, IReadOnlyList<ManifestObjectEntry> objects)
     {
         var source = job.Input.UseDicomStorageScp && job.Input.UseFolderImport
             ? "DICOM Storage SCP + Folder Import"
@@ -61,6 +61,7 @@ public sealed class ManifestFactory
                 TransferSyntaxPreservedWherePossible = true,
                 BlockedUnsafeReencoding = false
             },
+            Objects = objects,
             Warnings = warnings,
             Status = "DryRun"
         };
